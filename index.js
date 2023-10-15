@@ -30,7 +30,7 @@ function fetchFoodData() {
                 dailyMenuRe.lastIndex++;
             }
 
-            m.forEach((match, groupIndex) => {
+            m.forEach((match) => {
                 if (match.includes('product menu')) {
                     if (today.weekday > ++currentDay) return;
                     const foodName = match.match(foodNameRe)[1];
@@ -60,7 +60,7 @@ function fetchFoodData() {
                     }
 
                     // The result can be accessed through the `m`-variable.
-                    m.forEach((match, groupIndex) => {
+                    m.forEach((match) => {
                         if (match.includes('product menu')) {
                             const foodName = match.match(foodNameRe)[1];
                             const day = monday2.plus({days: currentDay++});
@@ -82,7 +82,6 @@ function fetchFoodData() {
                 fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
                 fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
                 console.log(menuItems);
-                return;
             }).catch(console.error);
         }
 
