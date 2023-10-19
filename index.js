@@ -153,7 +153,7 @@ async function getNetatmo() {
 }
 
 getNetatmo();
-setInterval(getNetatmo, 900000);
+setInterval(getNetatmo, 300000);
 
 function getTimestampInSeconds() {
     return Math.floor(Date.now() / 1000);
