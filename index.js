@@ -133,7 +133,7 @@ async function getNetatmo() {
         }
 
         const timestamp = getTimestampInSeconds() - 2700;
-        const measureResponse = await axios.get(`https://api.netatmo.com/api/getmeasure?device_id=70:ee:50:83:f5:34&scale=30min&type=rain&module_id=05:00:00:0a:b3:90&optimize=true&date_begin=${timestamp}`, {
+        const measureResponse = await axios.get(`https://api.netatmo.com/api/getmeasure?device_id=70:ee:50:83:f5:34&scale=30min&type=sum_rain&module_id=05:00:00:0a:b3:90&optimize=true&date_begin=${timestamp}`, {
             headers: {
                 'Authorization': `Bearer ${netatmoCredentials.access_token}`,
             },
