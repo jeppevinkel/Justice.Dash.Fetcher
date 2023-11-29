@@ -1,10 +1,8 @@
 const axios = require('axios');
-const {DateTime} = require('luxon');
+const { DateTime } = require('luxon');
 const fs = require('fs').promises;
 const querystring = require('querystring');
 require('dotenv').config();
-
-const foodNameRe = /<a.*<div style="float: left; width:50%">(.*?)<\/div>/s;
 
 const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag'];
 
@@ -14,84 +12,56 @@ function fetchFoodData() {
      */
     const menuItems = [];
 
-    const dailyMenuRe = /<li class="headline">(.|\n|\r)*?<\/a>/g;
-    axios.default.post('https://www.shop.foodandco.dk/gf').then(res => {
-        const data = res.data.slice(0, 20000);
-
-        let m;
-        let currentDay = 0;
+    axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', { params: { restaurantId: 1089, languageCode: 'da-DK' } }).then(res => {
+        const data = res.data;
 
         let today = DateTime.now();
         let monday = today.startOf('week');
 
-        while ((m = dailyMenuRe.exec(data)) !== null) {
-            // This is necessary to avoid infinite loops with zero-width matches
-            if (m.index === dailyMenuRe.lastIndex) {
-                dailyMenuRe.lastIndex++;
+        for (const dayIdx in data.days) {
+            const day = data.days[dayIdx];
+            const menu = day.menus[0] ?? {
+                type: 'Dagens varme ret',
+                menu: 'Ingenting',
+                friendlyUrl: '/gf/undefined',
+                image: 'https://images.foodandco.dk/Cache/7000/26db3d14e906a285ea7351e22a11617c.jpg'
             }
 
-            m.forEach((match) => {
-                if (match.includes('product menu')) {
-                    if (today.weekday > ++currentDay) return;
-                    const foodName = match.match(foodNameRe)[1];
-                    const day = monday.plus({days: currentDay - 1});
-
-                    menuItems.push({
-                        day: days[day.weekday - 1],
-                        date: day.toISODate(),
-                        foodName,
-                    });
-                }
-
+            menuItems.push({
+                day: days[dayIdx],
+                date: day.date,
+                foodName: menu.menu,
             });
         }
 
-        if (today.weekday !== 1) {
-            let monday2 = monday.plus({days: 7});
-            axios.default.post('https://www.shop.foodandco.dk/gf', {deliveryText: `week${monday2.toFormat('dd-MM-yyyy')}`}).then(res => {
-                const data = res.data.slice(0, 20000);
-                let m;
-                let currentDay = 0;
+        let nextMonday = DateTime.fromISO(data.firstDateOfWeek).plus({ days: 7 });
+        axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', { params: { restaurantId: 1089, languageCode: 'da-DK', date: `${nextMonday.toFormat('yyyy-MM-dd')}` } }).then(res => {
+            const data = res.data;
 
-                while (menuItems.length < 5 && (m = dailyMenuRe.exec(data)) !== null) {
-                    // This is necessary to avoid infinite loops with zero-width matches
-                    if (m.index === dailyMenuRe.lastIndex) {
-                        dailyMenuRe.lastIndex++;
-                    }
-
-                    // The result can be accessed through the `m`-variable.
-                    m.forEach((match) => {
-                        if (match.includes('product menu')) {
-                            const foodName = match.match(foodNameRe)[1];
-                            const day = monday2.plus({days: currentDay++});
-
-                            menuItems.push({
-                                day: days[day.weekday - 1],
-                                date: day.toISODate(),
-                                foodName,
-                            });
-                        }
-
-                    });
+            for (const dayIdx in data.days) {
+                const day = data.days[dayIdx];
+                const menu = day.menus[0] ?? {
+                    type: 'Dagens varme ret',
+                    menu: 'Ingenting',
+                    friendlyUrl: '/gf/undefined',
+                    image: 'https://images.foodandco.dk/Cache/7000/26db3d14e906a285ea7351e22a11617c.jpg'
                 }
 
-                try {
-                    fs.mkdir('../site/data', {recursive: true});
-                } catch (e) {
-                }
-                fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
-                fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
-                console.log(menuItems);
-            }).catch(console.error);
-        }
+                menuItems.push({
+                    day: days[dayIdx],
+                    date: day.date,
+                    foodName: menu.menu,
+                });
+            }
 
-        try {
-            fs.mkdir('../site/data', {recursive: true});
-        } catch (e) {
-        }
-        fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
-        fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
-        console.log(menuItems);
+            try {
+                fs.mkdir('../site/data', { recursive: true });
+            } catch (e) {
+            }
+            fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
+            fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
+            console.log(menuItems);
+        });
 
     }).catch(console.error);
 }
@@ -102,10 +72,10 @@ setInterval(fetchFoodData, 21600000);
 async function getNetatmo() {
     try {
         try {
-            fs.mkdir('./secret', {recursive: true});
+            fs.mkdir('./secret', { recursive: true });
         } catch (e) {
         }
-        let netatmoCredentials = JSON.parse(await fs.readFile('./secret/netatmoCreddentials.json', {encoding: 'utf-8'}));
+        let netatmoCredentials = JSON.parse(await fs.readFile('./secret/netatmoCreddentials.json', { encoding: 'utf-8' }));
 
         const current_time = Date.now();
 
@@ -143,10 +113,10 @@ async function getNetatmo() {
         console.log('rainValue', rainValue);
 
         try {
-            fs.mkdir('../site/data', {recursive: true});
+            fs.mkdir('../site/data', { recursive: true });
         } catch (e) {
         }
-        fs.writeFile('../site/data/rain.json', JSON.stringify({rainValue: rainValue ?? 0})).then(() => console.log('rain done'));
+        fs.writeFile('../site/data/rain.json', JSON.stringify({ rainValue: rainValue ?? 0 })).then(() => console.log('rain done'));
     } catch (error) {
         console.log(error);
     }
