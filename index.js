@@ -6,20 +6,45 @@ require('dotenv').config();
 
 const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag'];
 
+/**
+ * @typedef {Object} MenuResponseDayMenu
+ * @property {string} type
+ * @property {string} menu - A description of the meal.
+ * @property {string} friendlyUrl
+ * @property {string} image
+ */
+
+/**
+ * @typedef {Object} MenuResponseDay
+ * @property {string} dayOfWeek
+ * @property {string} date
+ * @property {MenuResponseDayMenu[]} menus - This will usually contain a single entry, which is the meal of the day.
+ */
+
+/**
+ * @typedef {Object} MenuResponse
+ * @property {number} weekNumber
+ * @property {string} firstDateOfWeek
+ * @property {MenuResponseDay[]} days
+ */
+
 function fetchFoodData() {
     /**
-     * @type {Array.<{day: Number, raw: String}>}
+     * @type {Array.<{day: string, date: string, foodName: string}>}
      */
     const menuItems = [];
 
     axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', { params: { restaurantId: 1089, languageCode: 'da-DK' } }).then(res => {
+        /**
+         * @type {MenuResponse}
+         */
         const data = res.data;
-
-        let today = DateTime.now();
-        let monday = today.startOf('week');
 
         for (const dayIdx in data.days) {
             const day = data.days[dayIdx];
+            /**
+             * @type {MenuResponseDayMenu}
+             */
             const menu = day.menus[0] ?? {
                 type: 'Dagens varme ret',
                 menu: 'Ingenting',
@@ -34,12 +59,16 @@ function fetchFoodData() {
             });
         }
 
+        // noinspection JSAnnotator
         let nextMonday = DateTime.fromISO(data.firstDateOfWeek).plus({ days: 7 });
-        axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', { params: { restaurantId: 1089, languageCode: 'da-DK', date: `${nextMonday.toFormat('yyyy-MM-dd')}` } }).then(res => {
+        axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', { params: { restaurantId: 1089, languageCode: 'da-DK', date: `${nextMonday.toFormat('yyyy-MM-dd')}` } }).then(async res => {
             const data = res.data;
 
             for (const dayIdx in data.days) {
                 const day = data.days[dayIdx];
+                /**
+                 * @type {MenuResponseDayMenu}
+                 */
                 const menu = day.menus[0] ?? {
                     type: 'Dagens varme ret',
                     menu: 'Ingenting',
@@ -55,11 +84,12 @@ function fetchFoodData() {
             }
 
             try {
-                fs.mkdir('../site/data', { recursive: true });
+                await fs.mkdir('../site/data', { recursive: true });
             } catch (e) {
+                console.error(e)
             }
-            fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
-            fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
+            await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
+            await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
             console.log(menuItems);
         });
 
@@ -72,8 +102,9 @@ setInterval(fetchFoodData, 21600000);
 async function getNetatmo() {
     try {
         try {
-            fs.mkdir('./secret', { recursive: true });
+            await fs.mkdir('./secret', { recursive: true });
         } catch (e) {
+            console.error(e)
         }
         let netatmoCredentials = JSON.parse(await fs.readFile('./secret/netatmoCreddentials.json', { encoding: 'utf-8' }));
 
@@ -113,8 +144,9 @@ async function getNetatmo() {
         console.log('rainValue', rainValue);
 
         try {
-            fs.mkdir('../site/data', { recursive: true });
+            await fs.mkdir('../site/data', { recursive: true });
         } catch (e) {
+            console.error(e)
         }
         fs.writeFile('../site/data/rain.json', JSON.stringify({ rainValue: rainValue ?? 0 })).then(() => console.log('rain done'));
     } catch (error) {
