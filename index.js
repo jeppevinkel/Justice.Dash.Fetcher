@@ -2,7 +2,12 @@ const axios = require('axios');
 const { DateTime } = require('luxon');
 const fs = require('fs').promises;
 const querystring = require('querystring');
+const Openai = require('openai');
 require('dotenv').config();
+
+const openai = new Openai({
+    apiKey: process.env.OPENAI_API_KEY
+})
 
 const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'Søndag'];
 
@@ -30,7 +35,7 @@ const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'S�
 
 function fetchFoodData() {
     /**
-     * @type {Array.<{day: string, date: string, foodName: string}>}
+     * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
      */
     const menuItems = [];
 
@@ -56,6 +61,7 @@ function fetchFoodData() {
                 day: days[dayIdx],
                 date: day.date,
                 foodName: menu.menu,
+                foodContents: undefined,
             });
         }
 
@@ -80,6 +86,7 @@ function fetchFoodData() {
                     day: days[dayIdx],
                     date: day.date,
                     foodName: menu.menu,
+                    foodContents: undefined,
                 });
             }
 
@@ -98,6 +105,58 @@ function fetchFoodData() {
 
 fetchFoodData();
 setInterval(fetchFoodData, 21600000);
+
+/**
+ *
+ * @param {string[]} foodTypes
+ * @returns {Promise<void>}
+ */
+async function checkFoodContents(foodTypes){
+    /**
+     * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
+     */
+    let menuItems = [];
+    try {
+        const rawJson = await fs.readFile('../site/data/menu.json', {encoding: 'utf-8'});
+        menuItems = JSON.parse(rawJson);
+    } catch (e) {
+        console.error(e)
+    }
+
+    for (const menuItem of menuItems.filter(it => it.foodContents === undefined)) {
+        menuItem.foodContents = [];
+        for (const foodType of foodTypes) {
+            const completion = await openai.chat.completions.create({
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Din opgave er at afgøre om der er ${foodType} i denne ret. Hvis den indeholder ${foodType} skal du svare med "ja" og ikke andet. Hvis ikke den indeholder ${foodType} skal du svare med "nej" og ikke andet.`
+                    },
+                    {
+                        role: 'user',
+                        content: `Retten hedder "${menuItem.foodName}"`
+                    }
+                ],
+                model: 'gpt-4-0613'
+            });
+
+            const response = completion.choices[0].message.content.toLowerCase();
+
+            if (response === 'ja') {
+                menuItem.foodContents.push(foodType);
+            }
+
+            console.log(`Checking if "${menuItem.foodName}" contains "${foodType}". Response: "${response}"`);
+        }
+    }
+
+    await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
+    await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
+    console.log(menuItems);
+}
+
+checkFoodContents(['fisk', 'svinekød', 'kød']);
+setInterval(checkFoodContents, 7200000, ['fisk', 'svinekød', 'kød']);
 
 async function getNetatmo() {
     try {
