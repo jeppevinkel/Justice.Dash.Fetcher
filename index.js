@@ -3,6 +3,7 @@ const {DateTime} = require('luxon');
 const fs = require('fs').promises;
 const querystring = require('querystring');
 const Openai = require('openai');
+const crypto = require("crypto");
 require('dotenv').config();
 
 const openai = new Openai({
@@ -38,7 +39,7 @@ async function fetchFoodData() {
      * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[], image: undefined|string}>}
      */
     let menuItems = [];
-    
+
     try {
         const rawJson = await fs.readFile('../site/data/menu.json', {encoding: 'utf-8'});
         menuItems = JSON.parse(rawJson);
@@ -211,6 +212,12 @@ async function generateImages() {
         console.error(e);
     }
 
+    try {
+        await fs.mkdir('../site/data/images', {recursive: true});
+    } catch (e) {
+        console.error(e);
+    }
+
     for (const menuItem of menuItems.filter(it => it.image === undefined)) {
         const response = await openai.images.generate({
             model: "dall-e-3",
@@ -218,11 +225,21 @@ async function generateImages() {
             n: 1,
             size: "1024x1024",
             quality: 'hd',
-          });
-          console.log(response.data);
-          menuItem.image = response.data[0].url;
+        });
 
-          console.log(`Generated image for "${menuItem.foodName}" at "${menuItem.image}".`);
+        const filename = crypto.randomBytes(4).toString('hex');
+
+        const imageResponse = await axios.default.get(response.data[0].url, { responseType: 'arraybuffer' });
+
+        await fs.writeFile(`../site/data/images/${filename}.png`, imageResponse.data);
+
+        menuItem.image = {
+            url: `/data/images/${filename}.png`,
+            prompt: `Food called "${menuItem.foodName}"`,
+            revisedPrompt: response.data[0].revised_prompt
+        }
+
+        console.log(`Generated image for "${menuItem.foodName}" at "${filename}.png".`);
     }
 
     await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
