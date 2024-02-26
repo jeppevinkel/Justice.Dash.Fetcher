@@ -37,7 +37,14 @@ function fetchFoodData() {
     /**
      * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
      */
-    const menuItems = [];
+    let menuItems = [];
+    
+    try {
+        const rawJson = await fs.readFile('../site/data/menu.json', {encoding: 'utf-8'});
+        menuItems = JSON.parse(rawJson);
+    } catch (e) {
+        console.error(e);
+    }
 
     axios.default.get('https://www.shop.foodandco.dk/api/WeeklyMenu', {
         params: {
@@ -109,6 +116,7 @@ function fetchFoodData() {
             await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
             await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
             console.log(menuItems);
+            checkFoodContents(['fisk', 'svinekød', 'kød']);
         });
 
     }).catch(console.error);
@@ -165,9 +173,6 @@ async function checkFoodContents(foodTypes) {
     await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
     console.log(menuItems);
 }
-
-checkFoodContents(['fisk', 'svinekød', 'kød']);
-setInterval(checkFoodContents, 7200000, ['fisk', 'svinekød', 'kød']);
 
 async function getNetatmo() {
     try {
