@@ -35,7 +35,7 @@ const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag', 'S�
 
 async function fetchFoodData() {
     /**
-     * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
+     * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[], image: undefined|string}>}
      */
     let menuItems = [];
     
@@ -69,12 +69,24 @@ async function fetchFoodData() {
                 image: 'https://images.foodandco.dk/Cache/7000/26db3d14e906a285ea7351e22a11617c.jpg',
             };
 
-            menuItems.push({
-                day: days[dayIdx],
-                date: day.date,
-                foodName: menu.menu,
-                foodContents: undefined,
-            });
+            const idx = menuItems.findIndex(it => it.date === day.date);
+            if (idx > -1) {
+                menuItems[idx] = {
+                    day: days[dayIdx],
+                    date: day.date,
+                    foodName: menu.menu,
+                    foodContents: menuItems[idx].foodContents,
+                    image: menuItems[idx].image,
+                }
+            } else {
+                menuItems.push({
+                    day: days[dayIdx],
+                    date: day.date,
+                    foodName: menu.menu,
+                    foodContents: undefined,
+                    image: undefined,
+                });
+            }
         }
 
         // noinspection JSAnnotator
@@ -100,12 +112,24 @@ async function fetchFoodData() {
                     image: 'https://images.foodandco.dk/Cache/7000/26db3d14e906a285ea7351e22a11617c.jpg',
                 };
 
-                menuItems.push({
-                    day: days[dayIdx],
-                    date: day.date,
-                    foodName: menu.menu,
-                    foodContents: undefined,
-                });
+                const idx = menuItems.findIndex(it => it.date === day.date);
+                if (idx > -1) {
+                    menuItems[idx] = {
+                        day: days[dayIdx],
+                        date: day.date,
+                        foodName: menu.menu,
+                        foodContents: menuItems[idx].foodContents,
+                        image: menuItems[idx].image,
+                    }
+                } else {
+                    menuItems.push({
+                        day: days[dayIdx],
+                        date: day.date,
+                        foodName: menu.menu,
+                        foodContents: undefined,
+                        image: undefined,
+                    });
+                }
             }
 
             try {
@@ -116,7 +140,8 @@ async function fetchFoodData() {
             await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
             await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
             console.log(menuItems);
-            checkFoodContents(['fisk', 'svinekød', 'kød']);
+            await checkFoodContents(['fisk', 'svinekød', 'kød', 'kylling']);
+            await generateImages();
         });
 
     }).catch(console.error);
@@ -167,6 +192,37 @@ async function checkFoodContents(foodTypes) {
 
             console.log(`Checking if "${menuItem.foodName}" contains "${foodType}". Response: "${response}"`);
         }
+    }
+
+    await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
+    await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
+    console.log(menuItems);
+}
+
+async function generateImages() {
+    /**
+     * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
+     */
+    let menuItems = [];
+    try {
+        const rawJson = await fs.readFile('../site/data/menu.json', {encoding: 'utf-8'});
+        menuItems = JSON.parse(rawJson);
+    } catch (e) {
+        console.error(e);
+    }
+
+    for (const menuItem of menuItems.filter(it => it.image === undefined)) {
+        const response = await openai.images.generate({
+            model: "dall-e-3",
+            prompt: `Food called "${menuItem.foodName}"`,
+            n: 1,
+            size: "1024x1024",
+            quality: 'hd',
+          });
+          console.log(response.data);
+          menuItem.image = response.data[0].url;
+
+          console.log(`Generated image for "${menuItem.foodName}" at "${menuItem.image}".`);
     }
 
     await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
