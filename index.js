@@ -33,7 +33,7 @@ const days = ['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'LÃ¸rdag', 'SÃ
  * @property {MenuResponseDay[]} days
  */
 
-function fetchFoodData() {
+async function fetchFoodData() {
     /**
      * @type {Array.<{day: string, date: string, foodName: string, foodContents: undefined|string[]}>}
      */
