@@ -168,7 +168,7 @@ async function checkFoodContents(foodTypes) {
         console.error(e);
     }
 
-    for (const menuItem of menuItems.filter(it => it.foodContents === undefined)) {
+    for (const menuItem of menuItems.filter(it => it.foodContents)) {
         menuItem.foodContents = [];
         for (const foodType of foodTypes) {
             const completion = await openai.chat.completions.create({
