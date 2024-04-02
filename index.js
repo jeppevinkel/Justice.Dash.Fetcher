@@ -141,7 +141,7 @@ async function fetchFoodData() {
             await fs.writeFile('../site/data/menu.json', JSON.stringify(menuItems, null, 4)).then(() => console.log('done'));
             await fs.writeFile('../site/data/menu.js', `var menu = ${JSON.stringify(menuItems)}`).then(() => console.log('done'));
             console.log(menuItems);
-            await checkFoodContents(['fisk', 'svinekød', 'kød', 'kylling', 'laktose']);
+            await checkFoodContents(['fisk', 'svinekød', 'kød', 'kylling', 'laktose', 'fjerdkræ']);
             await generateImages();
         });
 
