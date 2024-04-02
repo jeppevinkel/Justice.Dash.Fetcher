@@ -73,7 +73,7 @@ async function fetchFoodData() {
             const idx = menuItems.findIndex(it => it.date === day.date);
             if (idx > -1) {
                 menuItems[idx] = {
-                    day: days[dayIdx],
+                    day: day.dayOfWeek,
                     date: day.date,
                     foodName: menu.menu,
                     foodContents: menuItems[idx].foodContents,
@@ -81,7 +81,7 @@ async function fetchFoodData() {
                 }
             } else {
                 menuItems.push({
-                    day: days[dayIdx],
+                    day: day.dayOfWeek,
                     date: day.date,
                     foodName: menu.menu,
                     foodContents: undefined,
